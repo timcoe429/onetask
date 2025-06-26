@@ -170,7 +170,7 @@ class ProjectPlannerApp {
         `;
     }
     
-    renderProjectView() {
+   renderProjectView() {
         if (!this.selectedProject) return '';
         
         // Get today's task or next available task
@@ -240,12 +240,13 @@ class ProjectPlannerApp {
                                     </div>
                                     <button 
                                         onclick="app.completeTask(${todayTask.id}, ${this.selectedProject.id})"
-                                        class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full transition-all transform hover:scale-110"
-                                        title="Complete task"
+                                        class="flex-shrink-0 w-16 h-16 border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 text-gray-300 hover:text-green-500 rounded-full transition-all transform hover:scale-110 flex items-center justify-center group"
+                                        title="Mark as complete"
                                     >
-                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                        <svg class="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                         </svg>
+                                        <div class="absolute w-16 h-16 border-2 border-gray-300 rounded-full group-hover:hidden"></div>
                                     </button>
                                 </div>
                                 ${completedToday > 0 ? 
@@ -288,7 +289,7 @@ class ProjectPlannerApp {
                             <span class="text-sm text-gray-500">${this.projectTasks.filter(t => !t.is_completed).length} pending</span>
                         </div>
                         <div class="space-y-2 max-h-64 overflow-y-auto" id="tasksList">
-                            ${this.projectTasks.length > 0 ? 
+                            ${this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).length > 0 ? 
                                 this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).map((task, index) => `
                                     <div class="flex items-center p-3 rounded-lg bg-gray-50">
                                         <span class="text-gray-400 text-sm mr-3">#${index + 2}</span>
@@ -297,7 +298,7 @@ class ProjectPlannerApp {
                                         </div>
                                     </div>
                                 `).join('') :
-                                ''
+                                '<p class="text-gray-400 text-center py-4">No more tasks in queue</p>'
                             }
                         </div>
                     </div>
