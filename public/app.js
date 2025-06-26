@@ -86,8 +86,8 @@ class ProjectPlannerApp {
                     <div class="max-w-6xl mx-auto px-4 py-4">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h1 class="text-2xl font-bold text-gray-800">Project Planner</h1>
-                                <p class="text-sm text-gray-600">Focus on one task per project, every day</p>
+                                <h1 class="text-2xl font-bold text-gray-800">OneTask</h1>
+                                <p class="text-sm text-gray-600">One Task. Everyday. Forever.</p>
                             </div>
                             <div class="flex items-center space-x-4">
                                 <div class="text-right">
