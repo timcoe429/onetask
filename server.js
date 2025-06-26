@@ -216,6 +216,8 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+console.log('Login attempt:', { username, password, expected: ADMIN_USERNAME });
+
 // Logout endpoint
 app.post('/api/logout', (req, res) => {
   req.session.authenticated = false;
