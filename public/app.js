@@ -173,6 +173,15 @@ class ProjectPlannerApp {
     renderProjectView() {
         if (!this.selectedProject) return '';
         
+        // Get today's task or next available task
+        const todayTask = this.projectTasks.find(t => !t.is_completed);
+        const completedToday = this.projectTasks.filter(t => {
+            if (!t.completed_at) return false;
+            const completedDate = new Date(t.completed_at).toDateString();
+            const today = new Date().toDateString();
+            return completedDate === today;
+        }).length;
+        
         return `
             <div class="min-h-screen bg-gray-50">
                 <div class="max-w-4xl mx-auto px-4 py-8">
@@ -217,12 +226,78 @@ class ProjectPlannerApp {
                         </div>
                     </div>
                     
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Today's Task</h3>
+                        ${todayTask ? `
+                            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1 pr-4">
+                                        <h4 class="text-2xl font-bold text-gray-800 mb-2">${this.escapeHtml(todayTask.title)}</h4>
+                                        ${todayTask.description ? 
+                                            `<p class="text-lg text-gray-600">${this.escapeHtml(todayTask.description)}</p>` : 
+                                            ''
+                                        }
+                                    </div>
+                                    <button 
+                                        onclick="app.completeTask(${todayTask.id}, ${this.selectedProject.id})"
+                                        class="flex-shrink-0 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full transition-all transform hover:scale-110"
+                                        title="Complete task"
+                                    >
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                ${completedToday > 0 ? 
+                                    `<div class="mt-4 text-sm text-green-600">
+                                        <p>🎯 You've already completed ${completedToday} task${completedToday > 1 ? 's' : ''} today!</p>
+                                    </div>` : 
+                                    ''
+                                }
+                            </div>
+                        ` : `
+                            <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+                                ${this.projectTasks.length === 0 ? 
+                                    `<div>
+                                        <p class="text-gray-500 text-lg mb-4">No tasks yet for this project.</p>
+                                        <button 
+                                            onclick="app.showAddTaskModal()"
+                                            class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                                        >
+                                            Add Your First Task
+                                        </button>
+                                    </div>` : 
+                                    `<div>
+                                        <p class="text-green-600 text-xl font-bold mb-2">🎉 All tasks completed!</p>
+                                        <p class="text-gray-600">Great job! Add more tasks to keep the momentum going.</p>
+                                        <button 
+                                            onclick="app.showAddTaskModal()"
+                                            class="mt-4 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                                        >
+                                            Add More Tasks
+                                        </button>
+                                    </div>`
+                                }
+                            </div>
+                        `}
+                    </div>
+                    
                     <div class="bg-white rounded-xl shadow-sm p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">Tasks</h3>
-                        <div class="space-y-2" id="tasksList">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-gray-800">Task Queue</h3>
+                            <span class="text-sm text-gray-500">${this.projectTasks.filter(t => !t.is_completed).length} pending</span>
+                        </div>
+                        <div class="space-y-2 max-h-64 overflow-y-auto" id="tasksList">
                             ${this.projectTasks.length > 0 ? 
-                                this.projectTasks.map(task => this.renderTaskItem(task)).join('') :
-                                '<p class="text-gray-500 text-center py-8">No tasks yet. Add your first task!</p>'
+                                this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).map((task, index) => `
+                                    <div class="flex items-center p-3 rounded-lg bg-gray-50">
+                                        <span class="text-gray-400 text-sm mr-3">#${index + 2}</span>
+                                        <div class="flex-1">
+                                            <p class="text-gray-700">${this.escapeHtml(task.title)}</p>
+                                        </div>
+                                    </div>
+                                `).join('') :
+                                ''
                             }
                         </div>
                     </div>
