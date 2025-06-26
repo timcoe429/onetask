@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -23,6 +24,27 @@ app.use(express.static('public', {
     }
   }
 }));
+
+// Session middleware - stores login state
+app.use((req, res, next) => {
+  req.session = global.sessions?.[req.headers.cookie?.match(/session=([^;]+)/)?.[1]] || {};
+  req.sessionId = req.headers.cookie?.match(/session=([^;]+)/)?.[1] || crypto.randomBytes(16).toString('hex');
+  
+  if (!global.sessions) global.sessions = {};
+  global.sessions[req.sessionId] = req.session;
+  
+  res.setHeader('Set-Cookie', `session=${req.sessionId}; HttpOnly; Path=/; Max-Age=604800`);
+  next();
+});
+
+// Auth check middleware
+const requireAuth = (req, res, next) => {
+  if (req.session.authenticated) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Authentication required' });
+  }
+};
 
 // Initialize database with new schema
 async function initDB() {
@@ -177,10 +199,43 @@ async function initDB() {
   }
 }
 
+// === AUTH ENDPOINTS ===
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password123';
+  
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    req.session.authenticated = true;
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'Invalid username or password' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/logout', (req, res) => {
+  req.session.authenticated = false;
+  res.json({ success: true });
+});
+
+// Check auth status
+app.get('/api/auth/check', (req, res) => {
+  res.json({ authenticated: !!req.session.authenticated });
+});
+
+// Serve login page
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
 // === PROJECT ENDPOINTS ===
 
 // Get all projects with today's tasks
-app.get('/api/projects', async (req, res) => {
+app.get('/api/projects', requireAuth, async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
@@ -224,7 +279,7 @@ app.get('/api/projects', async (req, res) => {
 });
 
 // Create new project
-app.post('/api/projects', async (req, res) => {
+app.post('/api/projects', requireAuth, async (req, res) => {
   try {
     const { name, description, color, icon } = req.body;
     
@@ -249,7 +304,7 @@ app.post('/api/projects', async (req, res) => {
 // === TASK ENDPOINTS ===
 
 // Get tasks for a project
-app.get('/api/projects/:projectId/tasks', async (req, res) => {
+app.get('/api/projects/:projectId/tasks', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
     const { completed } = req.query;
@@ -278,7 +333,7 @@ app.get('/api/projects/:projectId/tasks', async (req, res) => {
 });
 
 // Add task to project
-app.post('/api/projects/:projectId/tasks', async (req, res) => {
+app.post('/api/projects/:projectId/tasks', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
     const { title, description, priority, assigned_date } = req.body;
@@ -297,7 +352,7 @@ app.post('/api/projects/:projectId/tasks', async (req, res) => {
 });
 
 // Complete a task
-app.post('/api/tasks/:taskId/complete', async (req, res) => {
+app.post('/api/tasks/:taskId/complete', requireAuth, async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -400,7 +455,7 @@ app.post('/api/tasks/:taskId/complete', async (req, res) => {
 });
 
 // Get next task for project (bonus task after completing daily)
-app.get('/api/projects/:projectId/next-task', async (req, res) => {
+app.get('/api/projects/:projectId/next-task', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
     
@@ -433,7 +488,7 @@ app.get('/api/projects/:projectId/next-task', async (req, res) => {
 // === STATS ENDPOINTS ===
 
 // Get global stats
-app.get('/api/stats/global', async (req, res) => {
+app.get('/api/stats/global', requireAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM global_stats WHERE id = 1');
     res.json(result.rows[0] || { total_points: 0 });
@@ -444,7 +499,7 @@ app.get('/api/stats/global', async (req, res) => {
 });
 
 // Get project-specific stats
-app.get('/api/projects/:projectId/stats', async (req, res) => {
+app.get('/api/projects/:projectId/stats', requireAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
     
@@ -505,14 +560,18 @@ async function checkAndAwardBadges(client, projectId, currentStreak) {
   return newBadges;
 }
 
-// Health check
+// Health check (no auth required)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Project Planner API is running!' });
 });
 
-// Serve the main app
+// Serve the main app (with auth check)
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  if (!req.session.authenticated) {
+    res.redirect('/login');
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
 });
 
 // Initialize database and start server
