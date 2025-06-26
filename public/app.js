@@ -13,6 +13,7 @@ class ProjectPlannerApp {
         this.showAddTask = false;
         this.newProject = { name: '', description: '', color: '#3B82F6', icon: '📁' };
         this.newTask = { title: '', description: '', priority: 0 };
+        this.bulkTasks = '';
         
         // Initialize
         this.init();
@@ -196,7 +197,7 @@ class ProjectPlannerApp {
                                 onclick="app.showAddTaskModal()"
                                 class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
                             >
-                                Add Task
+                                Add Tasks
                             </button>
                         </div>
                         
@@ -347,56 +348,42 @@ class ProjectPlannerApp {
     renderAddTaskModal() {
         return `
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                <div class="bg-white rounded-xl p-6 w-full max-w-md animate-slide-in">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">Add Task to ${this.selectedProject.name}</h3>
+                <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slide-in">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Add Tasks to ${this.selectedProject.name}</h3>
                     
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
-                            <input 
-                                type="text" 
-                                id="taskTitle"
-                                value="${this.escapeHtml(this.newTask.title)}"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="What needs to be done?"
-                                onchange="app.newTask.title = this.value"
-                            />
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-gray-700">Tasks (one per line)</label>
+                            <span class="text-xs text-gray-500">${this.bulkTasks.split('\\n').filter(t => t.trim()).length} tasks</span>
                         </div>
+                        <textarea 
+                            id="bulkTasks"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                            rows="15"
+                            placeholder="Enter tasks, one per line:\n\nWrite project proposal\nResearch competitors\nCreate wireframes\nBuild MVP\n\nTip: Start with = for high priority, == for urgent"
+                            onchange="app.bulkTasks = this.value"
+                            oninput="app.updateTaskCount(this.value)"
+                        >${this.escapeHtml(this.bulkTasks)}</textarea>
                         
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                            <textarea 
-                                id="taskDesc"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                rows="3"
-                                placeholder="Add any details..."
-                                onchange="app.newTask.description = this.value"
-                            >${this.escapeHtml(this.newTask.description)}</textarea>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                            <select 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                onchange="app.newTask.priority = parseInt(this.value)"
-                            >
-                                <option value="0">Normal</option>
-                                <option value="1">High</option>
-                                <option value="2">Urgent</option>
-                            </select>
+                        <div class="mt-2 text-xs text-gray-600">
+                            <p>📝 <strong>Tips:</strong></p>
+                            <p>• One task per line</p>
+                            <p>• Start with <code>=</code> for high priority</p>
+                            <p>• Start with <code>==</code> for urgent priority</p>
+                            <p>• Empty lines are ignored</p>
                         </div>
                     </div>
                     
-                    <div class="flex space-x-3 mt-6">
+                    <div class="flex space-x-3">
                         <button 
-                            onclick="app.createTask()"
-                            class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+                            onclick="app.createBulkTasks()"
+                            class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
                         >
-                            Add Task
+                            Add All Tasks
                         </button>
                         <button 
                             onclick="app.hideAddTaskModal()"
-                            class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200"
+                            class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                             Cancel
                         </button>
@@ -426,7 +413,80 @@ class ProjectPlannerApp {
     hideAddTaskModal() {
         this.showAddTask = false;
         this.newTask = { title: '', description: '', priority: 0 };
+        this.bulkTasks = '';
         this.render();
+    }
+    
+    updateTaskCount(value) {
+        const count = value.split('\n').filter(t => t.trim()).length;
+        const countElement = document.querySelector('.text-xs.text-gray-500');
+        if (countElement) {
+            countElement.textContent = `${count} tasks`;
+        }
+    }
+    
+    async createBulkTasks() {
+        if (!this.bulkTasks.trim() || !this.selectedProject) return;
+        
+        const lines = this.bulkTasks.split('\n').filter(line => line.trim());
+        const tasks = [];
+        
+        for (const line of lines) {
+            let title = line.trim();
+            let priority = 0;
+            
+            // Check for priority markers
+            if (title.startsWith('==')) {
+                priority = 2; // Urgent
+                title = title.substring(2).trim();
+            } else if (title.startsWith('=')) {
+                priority = 1; // High
+                title = title.substring(1).trim();
+            }
+            
+            if (title) {
+                tasks.push({ title, priority, description: '' });
+            }
+        }
+        
+        // Show loading state
+        const button = document.querySelector('[onclick="app.createBulkTasks()"]');
+        const originalText = button.textContent;
+        button.textContent = `Adding ${tasks.length} tasks...`;
+        button.disabled = true;
+        
+        try {
+            // Create all tasks
+            for (const task of tasks) {
+                await fetch(`/api/projects/${this.selectedProject.id}/tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+            }
+            
+            // Success - reload and close
+            await this.loadProjectTasks();
+            this.hideAddTaskModal();
+            
+            // Show success notification
+            this.showNotification(`Successfully added ${tasks.length} tasks!`, 'success');
+        } catch (err) {
+            console.error('Failed to create tasks:', err);
+            button.textContent = originalText;
+            button.disabled = false;
+            this.showNotification('Failed to add tasks. Please try again.', 'error');
+        }
+    }
+    
+    showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        notification.className = `fixed bottom-4 right-4 ${bgColor} text-white p-4 rounded-lg shadow-lg animate-slide-in z-50`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.remove(), 3000);
     }
     
     async createProject() {
@@ -448,24 +508,7 @@ class ProjectPlannerApp {
         }
     }
     
-    async createTask() {
-        if (!this.newTask.title.trim() || !this.selectedProject) return;
-        
-        try {
-            const response = await fetch(`/api/projects/${this.selectedProject.id}/tasks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(this.newTask)
-            });
-            
-            if (response.ok) {
-                await this.loadProjectTasks();
-                this.hideAddTaskModal();
-            }
-        } catch (err) {
-            console.error('Failed to create task:', err);
-        }
-    }
+
     
     async selectProject(projectId) {
         this.selectedProject = this.projects.find(p => p.id === projectId);
