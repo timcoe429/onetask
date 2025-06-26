@@ -87,7 +87,7 @@ class ProjectPlannerApp {
                         <div class="flex items-center justify-between">
                             <div>
                                 <h1 class="text-2xl font-bold text-gray-800">OneTask</h1>
-                                <p class="text-sm text-gray-600">One Task. Everyday. Forever.</p>
+                                <p class="text-sm text-gray-600">One task. Everyday. Forever.</p>
                             </div>
                             <div class="flex items-center space-x-4">
                                 <div class="text-right">
