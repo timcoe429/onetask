@@ -1,6 +1,47 @@
-# Challenge App
+# Project Planner
 
-A simple Node/Express application for tracking daily fitness challenges. The app uses a PostgreSQL database and serves a small client from the `public/` folder.
+A minimalist project management app that helps you focus on one task at a time. Built with the philosophy that consistent daily progress beats sporadic bursts of activity.
+
+## Core Concept
+
+- **One task per project per day** - Focus on making steady progress
+- **Streak tracking** - Build momentum with daily consistency
+- **Gamification** - Earn points and badges for maintaining streaks
+- **No overwhelm** - See only what matters today
+
+## Features
+
+### 📋 Project Management
+- Create multiple projects with custom icons and colors
+- Each project tracks its own streak and progress
+- Visual dashboard showing today's task for each project
+
+### ✅ Task System
+- One primary task per project per day
+- Complete daily task to unlock bonus tasks
+- Tasks queue up automatically
+- Never runs out - always something to work on
+
+### 🔥 Streak & Badge System
+- **Project Streaks**: Track consecutive days of progress per project
+- **Global Points**: Accumulate points across all projects
+- **Achievement Badges**:
+  - 🔥 **On Fire** - 3 day streak
+  - ⚡ **Lightning** - 7 day streak  
+  - 💎 **Diamond Hands** - 30 day streak
+  - 👑 **Legendary** - 100 day streak
+
+### 🎨 Visual Themes
+- Dynamic backgrounds that change based on your streak achievements
+- Clean, modern interface with smooth animations
+- Mobile-responsive design
+
+## Tech Stack
+
+- **Backend**: Node.js + Express
+- **Database**: PostgreSQL
+- **Frontend**: Vanilla JavaScript + Tailwind CSS
+- **Hosting**: Railway (or any Node.js host)
 
 ## Setup
 
@@ -10,22 +51,70 @@ A simple Node/Express application for tracking daily fitness challenges. The app
    ```
 
 2. **Configure environment variables**
-   Create a `.env` file based on the provided `.env.example`:
+   Create a `.env` file:
    ```bash
-   cp .env.example .env
+   DATABASE_URL=postgres://user:password@localhost:5432/project_planner
+   PORT=3000
    ```
-   Update the values in `.env` for your environment. At minimum set `DATABASE_URL` to your Postgres connection string. You can also change `PORT` if needed.
 
 3. **Start the server**
    ```bash
    npm start
    ```
-   The server defaults to port `3000`.
+   
+   The database tables will be created automatically on first run.
 
 ## Usage
 
-Open `http://localhost:3000` in your browser after starting the server. You can create users, join challenges and track daily progress. The API endpoints are defined in `server.js` and the frontend logic lives in the `public/` directory.
+1. **Create Projects**: Click "Add New Project" and give it a name, icon, and color
+2. **Add Tasks**: Click on a project to add tasks to its queue
+3. **Daily Workflow**: 
+   - Open the app each day
+   - See one task per project
+   - Complete tasks to earn points and maintain streaks
+   - Complete bonus tasks if you want to do more
 
-## Deploying
+## Database Schema
 
-The project works on platforms such as Railway. Ensure your environment variables are set appropriately in your deployment settings.
+- `projects` - Stores project information
+- `tasks` - All tasks across all projects
+- `daily_progress` - Tracks completed tasks by date
+- `project_streaks` - Maintains streak counts per project
+- `badges` - Achievement definitions
+- `project_badges` - Earned badges per project
+- `global_stats` - Overall statistics
+
+## API Endpoints
+
+### Projects
+- `GET /api/projects` - Get all projects with today's tasks
+- `POST /api/projects` - Create new project
+- `GET /api/projects/:id/tasks` - Get tasks for a project
+- `GET /api/projects/:id/stats` - Get project statistics
+
+### Tasks
+- `POST /api/projects/:projectId/tasks` - Add task to project
+- `POST /api/tasks/:taskId/complete` - Mark task as complete
+- `GET /api/projects/:projectId/next-task` - Get bonus task after completing daily
+
+### Stats
+- `GET /api/stats/global` - Get overall statistics
+
+## Philosophy
+
+This app is built on the principle that small, consistent actions compound over time. Instead of overwhelming yourself with huge task lists, focus on moving each project forward by just one task per day. 
+
+The streak system provides motivation to maintain consistency, while the bonus task system allows for productive days without breaking the sustainable pace.
+
+## Future Enhancements
+
+- Task priorities and reordering
+- Project archiving
+- Statistics and analytics dashboard
+- Task templates
+- Recurring tasks
+- Mobile app
+
+## License
+
+MIT
