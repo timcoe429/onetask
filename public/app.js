@@ -1,9 +1,10 @@
-// app.js - Main Project Planner Controller
+// app.js - Complete Project Planner (no dependencies on other files)
 class ProjectPlannerApp {
     constructor() {
         // State
         this.projects = [];
         this.selectedProject = null;
+        this.projectTasks = [];
         this.globalStats = { total_points: 0 };
         this.currentView = 'dashboard'; // 'dashboard' or 'project'
         
@@ -33,6 +34,10 @@ class ProjectPlannerApp {
                 fetch('/api/projects'),
                 fetch('/api/stats/global')
             ]);
+            
+            if (!projectsRes.ok) {
+                throw new Error('Failed to load projects');
+            }
             
             this.projects = await projectsRes.json();
             this.globalStats = await statsRes.json();
@@ -72,7 +77,7 @@ class ProjectPlannerApp {
                             </div>
                             <div class="flex items-center space-x-4">
                                 <div class="text-right">
-                                    <p class="text-2xl font-bold text-blue-600">${this.globalStats.total_points}</p>
+                                    <p class="text-2xl font-bold text-blue-600">${this.globalStats.total_points || 0}</p>
                                     <p class="text-xs text-gray-500">Total Points</p>
                                 </div>
                                 <div class="text-right">
@@ -90,7 +95,7 @@ class ProjectPlannerApp {
                         ${this.projects.map(project => this.renderProjectCard(project)).join('')}
                         
                         <!-- Add Project Card -->
-                        <div class="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-6 hover:border-blue-400 cursor-pointer transition-all"
+                        <div class="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-6 hover:border-blue-400 cursor-pointer transition-all card-hover"
                              onclick="app.showAddProjectModal()">
                             <div class="text-center">
                                 <div class="text-4xl mb-2">➕</div>
@@ -112,13 +117,13 @@ class ProjectPlannerApp {
         const isCompleted = hasTask && task.is_completed;
         
         return `
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer card-hover"
                  onclick="app.selectProject(${project.id})">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center space-x-3">
                             <span class="text-3xl">${project.icon}</span>
-                            <h3 class="text-lg font-bold text-gray-800">${project.name}</h3>
+                            <h3 class="text-lg font-bold text-gray-800">${this.escapeHtml(project.name)}</h3>
                         </div>
                         <div class="flex items-center space-x-2">
                             ${streak > 0 ? `
@@ -135,16 +140,16 @@ class ProjectPlannerApp {
                             <div class="flex items-center justify-between">
                                 <div class="flex-1">
                                     <p class="font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}">
-                                        ${task.title}
+                                        ${this.escapeHtml(task.title)}
                                     </p>
                                     ${task.description ? `
-                                        <p class="text-sm text-gray-600 mt-1">${task.description}</p>
+                                        <p class="text-sm text-gray-600 mt-1">${this.escapeHtml(task.description)}</p>
                                     ` : ''}
                                 </div>
                                 <div class="ml-4">
                                     ${isCompleted ? 
                                         '<span class="text-green-500 text-2xl">✓</span>' : 
-                                        '<span class="text-gray-300 text-2xl">○</span>'
+                                        '<button onclick="event.stopPropagation(); app.completeTask(' + task.id + ', ' + project.id + ')" class="text-gray-300 hover:text-green-500 text-2xl transition-colors">○</button>'
                                     }
                                 </div>
                             </div>
@@ -165,16 +170,91 @@ class ProjectPlannerApp {
     }
     
     renderProjectView() {
-        // This will be implemented next - shows detailed project view with all tasks
+        if (!this.selectedProject) return '';
+        
         return `
             <div class="min-h-screen bg-gray-50">
                 <div class="max-w-4xl mx-auto px-4 py-8">
-                    <button onclick="app.backToDashboard()" class="mb-4 text-blue-600 hover:text-blue-800">
-                        ← Back to Projects
+                    <button onclick="app.backToDashboard()" class="mb-4 text-blue-600 hover:text-blue-800 flex items-center space-x-2">
+                        <span>←</span>
+                        <span>Back to Projects</span>
                     </button>
-                    <h2>${this.selectedProject.name}</h2>
-                    <!-- Project details here -->
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-4xl">${this.selectedProject.icon}</span>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-gray-800">${this.escapeHtml(this.selectedProject.name)}</h2>
+                                    ${this.selectedProject.description ? 
+                                        `<p class="text-gray-600">${this.escapeHtml(this.selectedProject.description)}</p>` : 
+                                        ''
+                                    }
+                                </div>
+                            </div>
+                            <button 
+                                onclick="app.showAddTaskModal()"
+                                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                                Add Task
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p class="text-2xl font-bold text-blue-600">${this.selectedProject.current_streak || 0}</p>
+                                <p class="text-sm text-gray-500">Current Streak</p>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-bold text-green-600">${this.selectedProject.total_points || 0}</p>
+                                <p class="text-sm text-gray-500">Total Points</p>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-bold text-purple-600">${this.projectTasks.filter(t => t.is_completed).length}</p>
+                                <p class="text-sm text-gray-500">Completed Tasks</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Tasks</h3>
+                        <div class="space-y-2" id="tasksList">
+                            ${this.projectTasks.length > 0 ? 
+                                this.projectTasks.map(task => this.renderTaskItem(task)).join('') :
+                                '<p class="text-gray-500 text-center py-8">No tasks yet. Add your first task!</p>'
+                            }
+                        </div>
+                    </div>
                 </div>
+            </div>
+            
+            ${this.renderModals()}
+        `;
+    }
+    
+    renderTaskItem(task) {
+        return `
+            <div class="flex items-center p-3 rounded-lg hover:bg-gray-50 ${task.is_completed ? 'opacity-50' : ''}">
+                <div class="flex-1">
+                    <p class="font-medium ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-800'}">
+                        ${this.escapeHtml(task.title)}
+                    </p>
+                    ${task.description ? 
+                        `<p class="text-sm text-gray-600">${this.escapeHtml(task.description)}</p>` : 
+                        ''
+                    }
+                </div>
+                ${!task.is_completed ? 
+                    `<button 
+                        onclick="app.completeTask(${task.id}, ${this.selectedProject.id})"
+                        class="ml-4 text-gray-400 hover:text-green-500 transition-colors"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>` :
+                    '<span class="ml-4 text-green-500">✓</span>'
+                }
             </div>
         `;
     }
@@ -191,8 +271,8 @@ class ProjectPlannerApp {
         const icons = ['📁', '🚀', '💡', '🎯', '📊', '🔧', '📝', '🎨'];
         
         return `
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-xl p-6 w-full max-w-md">
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div class="bg-white rounded-xl p-6 w-full max-w-md animate-slide-in">
                     <h3 class="text-lg font-bold text-gray-800 mb-4">Create New Project</h3>
                     
                     <div class="space-y-4">
@@ -201,7 +281,7 @@ class ProjectPlannerApp {
                             <input 
                                 type="text" 
                                 id="projectName"
-                                value="${this.newProject.name}"
+                                value="${this.escapeHtml(this.newProject.name)}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 placeholder="My Awesome Project"
                                 onchange="app.newProject.name = this.value"
@@ -216,7 +296,7 @@ class ProjectPlannerApp {
                                 rows="2"
                                 placeholder="What's this project about?"
                                 onchange="app.newProject.description = this.value"
-                            >${this.newProject.description}</textarea>
+                            >${this.escapeHtml(this.newProject.description)}</textarea>
                         </div>
                         
                         <div>
@@ -264,6 +344,68 @@ class ProjectPlannerApp {
         `;
     }
     
+    renderAddTaskModal() {
+        return `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+                <div class="bg-white rounded-xl p-6 w-full max-w-md animate-slide-in">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Add Task to ${this.selectedProject.name}</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                            <input 
+                                type="text" 
+                                id="taskTitle"
+                                value="${this.escapeHtml(this.newTask.title)}"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="What needs to be done?"
+                                onchange="app.newTask.title = this.value"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                            <textarea 
+                                id="taskDesc"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows="3"
+                                placeholder="Add any details..."
+                                onchange="app.newTask.description = this.value"
+                            >${this.escapeHtml(this.newTask.description)}</textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                            <select 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onchange="app.newTask.priority = parseInt(this.value)"
+                            >
+                                <option value="0">Normal</option>
+                                <option value="1">High</option>
+                                <option value="2">Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 mt-6">
+                        <button 
+                            onclick="app.createTask()"
+                            class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+                        >
+                            Add Task
+                        </button>
+                        <button 
+                            onclick="app.hideAddTaskModal()"
+                            class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
     // Event handlers
     showAddProjectModal() {
         this.showAddProject = true;
@@ -273,6 +415,17 @@ class ProjectPlannerApp {
     hideAddProjectModal() {
         this.showAddProject = false;
         this.newProject = { name: '', description: '', color: '#3B82F6', icon: '📁' };
+        this.render();
+    }
+    
+    showAddTaskModal() {
+        this.showAddTask = true;
+        this.render();
+    }
+    
+    hideAddTaskModal() {
+        this.showAddTask = false;
+        this.newTask = { title: '', description: '', priority: 0 };
         this.render();
     }
     
@@ -295,25 +448,165 @@ class ProjectPlannerApp {
         }
     }
     
-    selectProject(projectId) {
+    async createTask() {
+        if (!this.newTask.title.trim() || !this.selectedProject) return;
+        
+        try {
+            const response = await fetch(`/api/projects/${this.selectedProject.id}/tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.newTask)
+            });
+            
+            if (response.ok) {
+                await this.loadProjectTasks();
+                this.hideAddTaskModal();
+            }
+        } catch (err) {
+            console.error('Failed to create task:', err);
+        }
+    }
+    
+    async selectProject(projectId) {
         this.selectedProject = this.projects.find(p => p.id === projectId);
-        this.currentView = 'project';
-        this.render();
+        if (this.selectedProject) {
+            await this.loadProjectTasks();
+            this.currentView = 'project';
+            this.render();
+        }
+    }
+    
+    async loadProjectTasks() {
+        if (!this.selectedProject) return;
+        
+        try {
+            const response = await fetch(`/api/projects/${this.selectedProject.id}/tasks`);
+            if (response.ok) {
+                this.projectTasks = await response.json();
+            }
+        } catch (err) {
+            console.error('Failed to load tasks:', err);
+            this.projectTasks = [];
+        }
+    }
+    
+    async completeTask(taskId, projectId) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                
+                // Show badge notification if earned
+                if (result.newBadges && result.newBadges.length > 0) {
+                    this.showBadgeNotification(result.newBadges[0]);
+                }
+                
+                // Reload data
+                await this.loadData();
+                
+                // If in project view, reload tasks
+                if (this.currentView === 'project') {
+                    await this.loadProjectTasks();
+                }
+                
+                this.render();
+                
+                // Check if there's a bonus task available
+                if (this.currentView === 'dashboard') {
+                    this.checkForBonusTask(projectId);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to complete task:', err);
+        }
+    }
+    
+    async checkForBonusTask(projectId) {
+        try {
+            const response = await fetch(`/api/projects/${projectId}/next-task`);
+            if (response.ok) {
+                const bonusTask = await response.json();
+                if (bonusTask) {
+                    this.showBonusTaskNotification(bonusTask, projectId);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to check for bonus task:', err);
+        }
+    }
+    
+    showBonusTaskNotification(task, projectId) {
+        const notification = document.createElement('div');
+        notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg animate-slide-in z-50';
+        notification.innerHTML = `
+            <p class="font-bold mb-1">Bonus Task Available! 🎯</p>
+            <p class="text-sm">${this.escapeHtml(task.title)}</p>
+            <button 
+                onclick="app.loadData().then(() => app.render()); this.parentElement.remove();"
+                class="mt-2 bg-white text-green-500 px-3 py-1 rounded text-sm hover:bg-green-50"
+            >
+                Show Task
+            </button>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.remove(), 10000);
+    }
+    
+    showBadgeNotification(badge) {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-4 rounded-full shadow-2xl z-50 animate-slide-in';
+        notification.innerHTML = `
+            <div class="flex items-center space-x-3">
+                <span class="text-3xl">${badge.icon}</span>
+                <div>
+                    <p class="font-bold text-lg">Badge Earned!</p>
+                    <p class="text-sm">${badge.name} - ${badge.description}</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.remove(), 5000);
     }
     
     backToDashboard() {
         this.currentView = 'dashboard';
         this.selectedProject = null;
+        this.projectTasks = [];
         this.render();
     }
     
     attachEvents() {
-        // Global event attachments if needed
+        // Any global events can be attached here
     }
     
     updateTheme() {
-        // Update theme based on global streak or achievements
-        // Similar to the original but simplified
+        // Check highest global streak and apply theme
+        let highestStreak = 0;
+        this.projects.forEach(p => {
+            if (p.current_streak > highestStreak) {
+                highestStreak = p.current_streak;
+            }
+        });
+        
+        // Remove all theme classes
+        document.body.classList.remove('theme-fire', 'theme-lightning', 'theme-diamond', 'theme-legendary');
+        
+        // Apply theme based on highest streak
+        if (highestStreak >= 100) {
+            document.body.classList.add('theme-legendary');
+        } else if (highestStreak >= 30) {
+            document.body.classList.add('theme-diamond');
+        } else if (highestStreak >= 7) {
+            document.body.classList.add('theme-lightning');
+        } else if (highestStreak >= 3) {
+            document.body.classList.add('theme-fire');
+        }
     }
     
     startAutoRefresh() {
@@ -325,6 +618,13 @@ class ProjectPlannerApp {
                 }
             });
         }, 60000);
+    }
+    
+    // Utility function to escape HTML
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
