@@ -23,6 +23,19 @@ class ProjectPlannerApp {
     }
     
     async init() {
+        try {
+        const authResponse = await fetch('/api/auth/check');
+        const { authenticated } = await authResponse.json();
+        
+        if (!authenticated) {
+            window.location.href = '/login';
+            return;
+        }
+    } catch (err) {
+        console.error('Auth check failed:', err);
+        window.location.href = '/login';
+        return;
+    }
         await this.loadData();
         this.render();
         this.startAutoRefresh();
