@@ -17,6 +17,15 @@ window.Dashboard = {
                                 <p class="text-sm text-gray-600">${app.focusMode === 2 ? 'Super Focus Mode - One project at a time' : app.focusMode === 1 ? 'Focus Mode' : 'One task. Everyday. Forever.'}</p>
                             </div>
                             <div class="flex items-center space-x-4">
+                                <button
+                                    onclick="app.showRocketFuelModal()"
+                                    class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all"
+                                    title="View Productivity Rocket Fuel"
+                                >
+                                    <span>🚀</span>
+                                    <span class="text-sm font-medium">Rocket Fuel</span>
+                                </button>
+                                
                                 <div class="text-center">
                                     <p class="text-2xl font-bold text-blue-600">${app.globalStats.total_points || 0}</p>
                                     <p class="text-xs text-gray-500">Total Points</p>
@@ -51,15 +60,6 @@ window.Dashboard = {
 
                 <!-- Projects Grid -->
                 <main class="max-w-6xl mx-auto px-4 py-8">
-                    <!-- Bank Account Widget -->
-                    ${app.globalStats && app.globalStats.total_points ? 
-                        BankAccount.render(
-                            app.globalStats.total_points || 0,
-                            1.2, // Default daily rate for now
-                            0    // Default no streak bonus for now
-                        ) : ''
-                    }
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         ${app.focusMode === 2 ? 
                             // Super Focus Mode - show only current project
