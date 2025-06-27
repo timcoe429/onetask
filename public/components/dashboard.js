@@ -51,6 +51,13 @@ window.Dashboard = {
 
                 <!-- Projects Grid -->
                 <main class="max-w-6xl mx-auto px-4 py-8">
+                    <!-- Bank Account Widget -->
+                    ${BankAccount.render(
+                        app.globalStats.total_points || 0,
+                        app.calculateDailyRate(),
+                        app.getStreakBonus()
+                    )}
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         ${app.focusMode === 2 ? 
                             // Super Focus Mode - show only current project
