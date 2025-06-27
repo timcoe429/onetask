@@ -39,9 +39,8 @@ window.BankAccount = {
         const progressPercentage = (totalTasks / maxTasks) * 100;
         
         return `
-            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="bg-white rounded-xl p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">🚀 Productivity Rocket Fuel</h3>
                     <span class="text-sm text-gray-500">1 task = 1 ton of thrust</span>
                 </div>
                 
