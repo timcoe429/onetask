@@ -80,12 +80,21 @@ class ProjectPlannerApp {
                                 <p class="text-sm text-gray-600">${this.superFocusMode ? 'Super Focus Mode - One task at a time' : 'Focus on one task per project, every day'}</p>
                             </div>
                             <div class="flex items-center space-x-4">
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-blue-600">${this.globalStats.total_points || 0}</p>
+                                    <p class="text-xs text-gray-500">Total Points</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-green-600">${todayCount}</p>
+                                    <p class="text-xs text-gray-500">Done Today</p>
+                                </div>
+                                
                                 <!-- Super Focus Toggle -->
                                 <button 
                                     onclick="app.toggleSuperFocus()"
                                     class="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all ${
                                         this.superFocusMode 
-                                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }"
                                     title="${this.superFocusMode ? 'Disable Super Focus' : 'Enable Super Focus'}"
@@ -96,15 +105,6 @@ class ProjectPlannerApp {
                                     </svg>
                                     <span class="text-sm font-medium">${this.superFocusMode ? 'ON' : 'OFF'}</span>
                                 </button>
-                                
-                                <div class="text-right">
-                                    <p class="text-2xl font-bold text-blue-600">${this.globalStats.total_points || 0}</p>
-                                    <p class="text-xs text-gray-500">Total Points</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-2xl font-bold text-green-600">${todayCount}</p>
-                                    <p class="text-xs text-gray-500">Done Today</p>
-                                </div>
                             </div>
                         </div>
                     </div>
