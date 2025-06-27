@@ -60,7 +60,7 @@ class ProjectPlannerApp {
         const app = document.getElementById('app');
         
         if (this.currentView === 'dashboard') {
-            app.innerHTML = Dashboard.render(this);
+            app.innerHTML = this.renderDashboard();
         } else if (this.currentView === 'project' && this.selectedProject) {
             app.innerHTML = ProjectView.render(this);
         }
@@ -73,7 +73,7 @@ class ProjectPlannerApp {
         return `
             ${this.showAddProject ? Modals.renderAddProject(this.newProject) : ''}
             ${this.showAddTask ? Modals.renderAddTask(this.selectedProject, this.bulkTasks) : ''}
-            ${this.showProductivityDashboard ? BankAccount.renderModal(
+            ${this.showProductivityDashboard ? this.renderProductivityDashboard() : ''}
                 this.globalStats.total_points || 0,
                 1.2, // Default daily rate
                 0    // Default streak bonus
