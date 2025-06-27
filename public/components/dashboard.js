@@ -1,12 +1,4 @@
-<!-- Productivity Dashboard Button -->
-                                <button 
-                                    onclick="app.toggleProductivityDashboard()"
-                                    class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all"
-                                    title="View Productivity Dashboard"
-                                >
-                                    <span class="text-lg">🚀</span>
-                                    <span class="text-sm font-medium">Dashboard</span>
-                                </button>// components/dashboard.js
+// components/dashboard.js
 window.Dashboard = {
     // Render the main dashboard
     render: function(app) {
@@ -33,6 +25,16 @@ window.Dashboard = {
                                     <p class="text-2xl font-bold text-green-600">${todayCount}</p>
                                     <p class="text-xs text-gray-500">Done Today</p>
                                 </div>
+                                
+                                <!-- Productivity Dashboard Button -->
+                                <button 
+                                    onclick="app.toggleProductivityDashboard()"
+                                    class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all"
+                                    title="View Productivity Dashboard"
+                                >
+                                    <span class="text-lg">🚀</span>
+                                    <span class="text-sm font-medium">Dashboard</span>
+                                </button>
                                 
                                 <!-- Focus Toggle -->
                                 <button 
