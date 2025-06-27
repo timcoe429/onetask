@@ -18,7 +18,7 @@ window.Dashboard = {
                             </div>
                             <div class="flex items-center space-x-4">
                                 <button 
-                                    onclick="Dashboard.renderModal(app)"
+                                    onclick="Dashboard.renderModal(window.app)"
                                     class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
                                     title="View Dashboard"
                                 >
