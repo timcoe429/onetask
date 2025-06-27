@@ -11,7 +11,6 @@ class ProjectPlannerApp {
         // UI state
         this.showAddProject = false;
         this.showAddTask = false;
-        this.showProductivityDashboard = false;
         this.newProject = { name: '', description: '', color: '#3B82F6', icon: '📁' };
         this.newTask = { title: '', description: '', priority: 0 };
         this.bulkTasks = '';
@@ -73,11 +72,6 @@ class ProjectPlannerApp {
         return `
             ${this.showAddProject ? Modals.renderAddProject(this.newProject) : ''}
             ${this.showAddTask ? Modals.renderAddTask(this.selectedProject, this.bulkTasks) : ''}
-            ${this.showProductivityDashboard ? this.renderProductivityDashboard() : ''}
-                this.globalStats.total_points || 0,
-                1.2, // Default daily rate
-                0    // Default streak bonus
-            ) : ''}
         `;
     }
     
@@ -93,11 +87,6 @@ class ProjectPlannerApp {
             StateManager.setCurrentProjectIndex(0);
         }
         
-        this.render();
-    }
-    
-    toggleProductivityDashboard() {
-        this.showProductivityDashboard = !this.showProductivityDashboard;
         this.render();
     }
     
@@ -312,32 +301,6 @@ class ProjectPlannerApp {
                 }
             });
         }, 60000);
-    }
-    
-    // Calculate average daily task completion rate
-    calculateDailyRate() {
-        // For now, calculate based on total points and account age
-        // In a real app, you'd track this properly in the database
-        const accountAgeDays = 30; // Would come from user registration date
-        if (accountAgeDays === 0) return 1;
-        
-        return (this.globalStats.total_points || 0) / accountAgeDays;
-    }
-    
-    // Get current streak bonus percentage
-    getStreakBonus() {
-        let highestStreak = 0;
-        this.projects.forEach(p => {
-            if (p.current_streak > highestStreak) {
-                highestStreak = p.current_streak;
-            }
-        });
-        
-        // Streak bonuses
-        if (highestStreak >= 30) return 30;  // 30% bonus
-        if (highestStreak >= 7) return 20;   // 20% bonus
-        if (highestStreak >= 3) return 10;   // 10% bonus
-        return 0;
     }
 }
 
