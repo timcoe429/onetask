@@ -60,7 +60,7 @@ class ProjectPlannerApp {
         const app = document.getElementById('app');
         
         if (this.currentView === 'dashboard') {
-            app.innerHTML = this.renderDashboard();
+            app.innerHTML = Dashboard.render(this);
         } else if (this.currentView === 'project' && this.selectedProject) {
             app.innerHTML = ProjectView.render(this);
         }
