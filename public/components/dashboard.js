@@ -18,7 +18,7 @@ window.Dashboard = {
                             </div>
                             <div class="flex items-center space-x-4">
                                 <button 
-                                    onclick="Dashboard.renderModal(window.app)"
+                                    onclick="Dashboard.renderModal(app)"
                                     class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
                                     title="View Dashboard"
                                 >
@@ -72,7 +72,7 @@ window.Dashboard = {
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center space-x-3">
                             <span class="text-3xl">${project.icon}</span>
-                            <h3 class="text-lg font-bold text-gray-800">${Utils.escapeHtml(project.name)}</h3>
+                            <h3 class="text-lg font-bold text-gray-800">${app.escapeHtml(project.name)}</h3>
                         </div>
                         <div class="flex items-center space-x-2">
                             ${streak > 0 ? `
@@ -89,10 +89,10 @@ window.Dashboard = {
                             <div class="flex items-center justify-between">
                                 <div class="flex-1">
                                     <p class="font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}">
-                                        ${Utils.escapeHtml(task.title)}
+                                        ${app.escapeHtml(task.title)}
                                     </p>
                                     ${task.description ? `
-                                        <p class="text-sm text-gray-600 mt-1">${Utils.escapeHtml(task.description)}</p>
+                                        <p class="text-sm text-gray-600 mt-1">${app.escapeHtml(task.description)}</p>
                                     ` : ''}
                                 </div>
                                 <div class="ml-4">
@@ -190,7 +190,7 @@ window.Dashboard = {
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="flex items-center space-x-2">
                                             <span class="text-xl">${project.icon}</span>
-                                            <h4 class="font-medium text-gray-800">${Utils.escapeHtml(project.name)}</h4>
+                                            <h4 class="font-medium text-gray-800">${app.escapeHtml(project.name)}</h4>
                                         </div>
                                         <div class="flex items-center space-x-3 text-sm">
                                             ${streak > 0 ? `
