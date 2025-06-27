@@ -15,8 +15,9 @@ class ProjectPlannerApp {
         this.newTask = { title: '', description: '', priority: 0 };
         this.bulkTasks = '';
         
-        // Super Focus mode
-        this.superFocusMode = localStorage.getItem('superFocusMode') === 'true';
+        // Focus modes: 0 = off, 1 = focus, 2 = super focus
+        this.focusMode = parseInt(localStorage.getItem('focusMode') || '0');
+        this.currentProjectIndex = parseInt(localStorage.getItem('currentProjectIndex') || '0');
         
         // Initialize
         this.init();
@@ -90,7 +91,7 @@ class ProjectPlannerApp {
                         <div class="flex items-center justify-between">
                             <div>
                                 <h1 class="text-2xl font-bold text-gray-800">OneTask</h1>
-                                <p class="text-sm text-gray-600">${this.superFocusMode ? 'Super Focus Mode' : 'One task. Everyday. Forever.'}</p>
+                                <p class="text-sm text-gray-600">${this.focusMode === 2 ? 'Super Focus Mode - One project at a time' : this.focusMode === 1 ? 'Focus Mode' : 'One task. Everyday. Forever.'}</p>
                             </div>
                             <div class="flex items-center space-x-4">
                                 <div class="text-center">
@@ -102,21 +103,23 @@ class ProjectPlannerApp {
                                     <p class="text-xs text-gray-500">Done Today</p>
                                 </div>
                                 
-                                <!-- Super Focus Toggle -->
+                                <!-- Focus Toggle -->
                                 <button 
-                                    onclick="app.toggleSuperFocus()"
+                                    onclick="app.toggleFocus()"
                                     class="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all ${
-                                        this.superFocusMode 
-                                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                        this.focusMode === 2 
+                                            ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                            : this.focusMode === 1
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }"
-                                    title="${this.superFocusMode ? 'Disable Super Focus' : 'Enable Super Focus'}"
+                                    title="${this.focusMode === 2 ? 'Super Focus Mode' : this.focusMode === 1 ? 'Focus Mode' : 'Normal Mode'}"
                                 >
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
-                                    <span class="text-sm font-medium">${this.superFocusMode ? 'ON' : 'OFF'}</span>
+                                    <span class="text-sm font-medium">${this.focusMode === 2 ? 'SUPER' : this.focusMode === 1 ? 'ON' : 'OFF'}</span>
                                 </button>
                             </div>
                         </div>
@@ -126,16 +129,62 @@ class ProjectPlannerApp {
                 <!-- Projects Grid -->
                 <main class="max-w-6xl mx-auto px-4 py-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        ${this.projects.map(project => this.renderProjectCard(project)).join('')}
+                        ${this.focusMode === 2 ? 
+                            // Super Focus Mode - show only current project
+                            (() => {
+                                const activeProjects = this.projects.filter(p => {
+                                    const task = p.todays_task;
+                                    return task && task.id && !task.is_completed;
+                                });
+                                
+                                if (activeProjects.length === 0) {
+                                    return `
+                                        <div class="col-span-full">
+                                            <div class="bg-white rounded-xl shadow-sm p-12 text-center">
+                                                <div class="text-6xl mb-4">🎉</div>
+                                                <h3 class="text-2xl font-bold text-gray-800 mb-2">All Done!</h3>
+                                                <p class="text-gray-600 mb-6">You've completed all tasks for today!</p>
+                                                <button 
+                                                    onclick="app.toggleFocus()"
+                                                    class="text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Exit Super Focus Mode
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                
+                                // Ensure currentProjectIndex is valid
+                                if (this.currentProjectIndex >= activeProjects.length) {
+                                    this.currentProjectIndex = 0;
+                                    localStorage.setItem('currentProjectIndex', '0');
+                                }
+                                
+                                const currentProject = activeProjects[this.currentProjectIndex];
+                                return `
+                                    <div class="col-span-full max-w-2xl mx-auto">
+                                        <div class="text-center mb-4 text-sm text-gray-500">
+                                            Project ${this.currentProjectIndex + 1} of ${activeProjects.length}
+                                        </div>
+                                        ${this.renderProjectCard(currentProject)}
+                                    </div>
+                                `;
+                            })() :
+                            // Normal or Focus mode - show all projects
+                            this.projects.map(project => this.renderProjectCard(project)).join('')
+                        }
                         
-                        <!-- Add Project Card -->
-                        <div class="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-6 hover:border-blue-400 cursor-pointer transition-all card-hover"
-                             onclick="app.showAddProjectModal()">
-                            <div class="text-center">
-                                <div class="text-4xl mb-2">➕</div>
-                                <p class="text-gray-600 font-medium">Add New Project</p>
+                        ${this.focusMode !== 2 ? `
+                            <!-- Add Project Card -->
+                            <div class="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-6 hover:border-blue-400 cursor-pointer transition-all card-hover"
+                                 onclick="app.showAddProjectModal()">
+                                <div class="text-center">
+                                    <div class="text-4xl mb-2">➕</div>
+                                    <p class="text-gray-600 font-medium">Add New Project</p>
+                                </div>
                             </div>
-                        </div>
+                        ` : ''}
                     </div>
                 </main>
             </div>
@@ -194,7 +243,7 @@ class ProjectPlannerApp {
                         </div>
                     `}
                     
-                    ${!this.superFocusMode ? `
+                    ${this.focusMode === 0 ? `
                         <div class="mt-4 flex items-center justify-between text-sm text-gray-500">
                             <span>${project.pending_tasks_count || 0} pending tasks</span>
                             <span>${project.total_points || 0} points</span>
@@ -237,7 +286,7 @@ class ProjectPlannerApp {
                                     }
                                 </div>
                             </div>
-                            ${!this.superFocusMode ? `
+                            ${this.focusMode === 0 ? `
                                 <button 
                                     onclick="app.showAddTaskModal()"
                                     class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
@@ -263,7 +312,7 @@ class ProjectPlannerApp {
                         </div>
                     </div>
                     
-                    ${!this.superFocusMode ? `
+                    ${this.focusMode === 0 ? `
                         <div class="mb-6">
                             <h3 class="text-lg font-bold text-gray-800 mb-4">Today's Task</h3>
                             ${todayTask ? `
@@ -341,7 +390,7 @@ class ProjectPlannerApp {
                             </div>
                         </div>
                     ` : `
-                        ${this.renderSuperFocusView(todayTask, completedToday)}
+                        ${this.renderFocusView(todayTask, completedToday)}
                     `}
                 </div>
             </div>
@@ -350,7 +399,7 @@ class ProjectPlannerApp {
         `;
     }
     
-    renderSuperFocusView(todayTask, completedToday) {
+    renderFocusView(todayTask, completedToday) {
         if (!todayTask) {
             return `
                 <div class="bg-white rounded-xl shadow-sm p-12 text-center">
@@ -360,10 +409,10 @@ class ProjectPlannerApp {
                             <h3 class="text-2xl font-bold text-gray-800 mb-2">No tasks yet</h3>
                             <p class="text-gray-600 mb-6">Exit Super Focus to add tasks to this project.</p>
                             <button 
-                                onclick="app.toggleSuperFocus()"
+                                onclick="app.toggleFocus()"
                                 class="text-blue-600 hover:text-blue-800"
                             >
-                                Exit Super Focus Mode
+                                Exit Focus Mode
                             </button>
                         </div>` : 
                         `<div>
@@ -371,10 +420,10 @@ class ProjectPlannerApp {
                             <h3 class="text-2xl font-bold text-gray-800 mb-2">All Done!</h3>
                             <p class="text-gray-600 mb-6">You've completed all tasks in this project.</p>
                             <button 
-                                onclick="app.toggleSuperFocus()"
+                                onclick="app.toggleFocus()"
                                 class="text-blue-600 hover:text-blue-800"
                             >
-                                Exit Super Focus to add more tasks
+                                Exit Focus Mode to add more tasks
                             </button>
                         </div>`
                     }
@@ -576,9 +625,17 @@ class ProjectPlannerApp {
     }
     
     // Event handlers
-    toggleSuperFocus() {
-        this.superFocusMode = !this.superFocusMode;
-        localStorage.setItem('superFocusMode', this.superFocusMode);
+    toggleFocus() {
+        // Cycle through modes: 0 -> 1 -> 2 -> 0
+        this.focusMode = (this.focusMode + 1) % 3;
+        localStorage.setItem('focusMode', this.focusMode.toString());
+        
+        // Reset project index when entering super focus mode
+        if (this.focusMode === 2) {
+            this.currentProjectIndex = 0;
+            localStorage.setItem('currentProjectIndex', '0');
+        }
+        
         this.render();
     }
     
@@ -745,6 +802,21 @@ class ProjectPlannerApp {
                 }
                 
                 this.render();
+                
+                // In super focus mode, advance to next project after completing task
+                if (this.focusMode === 2 && this.currentView === 'dashboard') {
+                    const activeProjects = this.projects.filter(p => {
+                        const task = p.todays_task;
+                        return task && task.id && !task.is_completed;
+                    });
+                    
+                    if (activeProjects.length > 0) {
+                        // Move to next project with uncompleted task
+                        this.currentProjectIndex = (this.currentProjectIndex + 1) % activeProjects.length;
+                        localStorage.setItem('currentProjectIndex', this.currentProjectIndex.toString());
+                        this.render();
+                    }
+                }
                 
                 // Check if there's a bonus task available
                 if (this.currentView === 'dashboard') {
