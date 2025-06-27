@@ -11,6 +11,7 @@ class ProjectPlannerApp {
         // UI state
         this.showAddProject = false;
         this.showAddTask = false;
+        this.showRocketFuel = false;
         this.newProject = { name: '', description: '', color: '#3B82F6', icon: '📁' };
         this.newTask = { title: '', description: '', priority: 0 };
         this.bulkTasks = '';
@@ -72,6 +73,7 @@ class ProjectPlannerApp {
         return `
             ${this.showAddProject ? Modals.renderAddProject(this.newProject) : ''}
             ${this.showAddTask ? Modals.renderAddTask(this.selectedProject, this.bulkTasks) : ''}
+            ${this.showRocketFuel ? Modals.renderRocketFuel(this) : ''}
         `;
     }
     
@@ -110,6 +112,16 @@ class ProjectPlannerApp {
         this.showAddTask = false;
         this.newTask = { title: '', description: '', priority: 0 };
         this.bulkTasks = '';
+        this.render();
+    }
+    
+    showRocketFuelModal() {
+        this.showRocketFuel = true;
+        this.render();
+    }
+    
+    hideRocketFuelModal() {
+        this.showRocketFuel = false;
         this.render();
     }
     
