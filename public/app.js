@@ -15,6 +15,9 @@ class ProjectPlannerApp {
         this.newTask = { title: '', description: '', priority: 0 };
         this.bulkTasks = '';
         
+        // Super Focus mode
+        this.superFocusMode = localStorage.getItem('superFocusMode') === 'true';
+        
         // Initialize
         this.init();
         
@@ -24,18 +27,18 @@ class ProjectPlannerApp {
     
     async init() {
         try {
-        const authResponse = await fetch('/api/auth/check');
-        const { authenticated } = await authResponse.json();
-        
-        if (!authenticated) {
+            const authResponse = await fetch('/api/auth/check');
+            const { authenticated } = await authResponse.json();
+            
+            if (!authenticated) {
+                window.location.href = '/login';
+                return;
+            }
+        } catch (err) {
+            console.error('Auth check failed:', err);
             window.location.href = '/login';
             return;
         }
-    } catch (err) {
-        console.error('Auth check failed:', err);
-        window.location.href = '/login';
-        return;
-    }
         await this.loadData();
         this.render();
         this.startAutoRefresh();
@@ -87,17 +90,34 @@ class ProjectPlannerApp {
                         <div class="flex items-center justify-between">
                             <div>
                                 <h1 class="text-2xl font-bold text-gray-800">OneTask</h1>
-                                <p class="text-sm text-gray-600">One task. Everyday. Forever.</p>
+                                <p class="text-sm text-gray-600">${this.superFocusMode ? 'Super Focus Mode' : 'One task. Everyday. Forever.'}</p>
                             </div>
                             <div class="flex items-center space-x-4">
-                                <div class="text-right">
+                                <div class="text-center">
                                     <p class="text-2xl font-bold text-blue-600">${this.globalStats.total_points || 0}</p>
                                     <p class="text-xs text-gray-500">Total Points</p>
                                 </div>
-                                <div class="text-right">
+                                <div class="text-center">
                                     <p class="text-2xl font-bold text-green-600">${todayCount}</p>
                                     <p class="text-xs text-gray-500">Done Today</p>
                                 </div>
+                                
+                                <!-- Super Focus Toggle -->
+                                <button 
+                                    onclick="app.toggleSuperFocus()"
+                                    class="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all ${
+                                        this.superFocusMode 
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }"
+                                    title="${this.superFocusMode ? 'Disable Super Focus' : 'Enable Super Focus'}"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <span class="text-sm font-medium">${this.superFocusMode ? 'ON' : 'OFF'}</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -174,16 +194,18 @@ class ProjectPlannerApp {
                         </div>
                     `}
                     
-                    <div class="mt-4 flex items-center justify-between text-sm text-gray-500">
-                        <span>${project.pending_tasks_count || 0} pending tasks</span>
-                        <span>${project.total_points || 0} points</span>
-                    </div>
+                    ${!this.superFocusMode ? `
+                        <div class="mt-4 flex items-center justify-between text-sm text-gray-500">
+                            <span>${project.pending_tasks_count || 0} pending tasks</span>
+                            <span>${project.total_points || 0} points</span>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
     }
     
-   renderProjectView() {
+    renderProjectView() {
         if (!this.selectedProject) return '';
         
         // Get today's task or next available task
@@ -215,12 +237,14 @@ class ProjectPlannerApp {
                                     }
                                 </div>
                             </div>
-                            <button 
-                                onclick="app.showAddTaskModal()"
-                                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                            >
-                                Add Tasks
-                            </button>
+                            ${!this.superFocusMode ? `
+                                <button 
+                                    onclick="app.showAddTaskModal()"
+                                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                                >
+                                    Add Tasks
+                                </button>
+                            ` : ''}
                         </div>
                         
                         <div class="grid grid-cols-3 gap-4 text-center">
@@ -239,86 +263,155 @@ class ProjectPlannerApp {
                         </div>
                     </div>
                     
-                    <div class="mb-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">Today's Task</h3>
-                        ${todayTask ? `
-                            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex-1 pr-4">
-                                        <h4 class="text-2xl font-bold text-gray-800 mb-2">${this.escapeHtml(todayTask.title)}</h4>
-                                        ${todayTask.description ? 
-                                            `<p class="text-lg text-gray-600">${this.escapeHtml(todayTask.description)}</p>` : 
-                                            ''
-                                        }
-                                    </div>
-                                    <button 
-                                        onclick="app.completeTask(${todayTask.id}, ${this.selectedProject.id})"
-                                        class="flex-shrink-0 w-16 h-16 border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 text-gray-300 hover:text-green-500 rounded-full transition-all transform hover:scale-110 flex items-center justify-center group"
-                                        title="Mark as complete"
-                                    >
-                                        <svg class="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        <div class="absolute w-16 h-16 border-2 border-gray-300 rounded-full group-hover:hidden"></div>
-                                    </button>
-                                </div>
-                                ${completedToday > 0 ? 
-                                    `<div class="mt-4 text-sm text-green-600">
-                                        <p>🎯 You've already completed ${completedToday} task${completedToday > 1 ? 's' : ''} today!</p>
-                                    </div>` : 
-                                    ''
-                                }
-                            </div>
-                        ` : `
-                            <div class="bg-white rounded-xl shadow-sm p-8 text-center">
-                                ${this.projectTasks.length === 0 ? 
-                                    `<div>
-                                        <p class="text-gray-500 text-lg mb-4">No tasks yet for this project.</p>
-                                        <button 
-                                            onclick="app.showAddTaskModal()"
-                                            class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
-                                        >
-                                            Add Your First Task
-                                        </button>
-                                    </div>` : 
-                                    `<div>
-                                        <p class="text-green-600 text-xl font-bold mb-2">🎉 All tasks completed!</p>
-                                        <p class="text-gray-600">Great job! Add more tasks to keep the momentum going.</p>
-                                        <button 
-                                            onclick="app.showAddTaskModal()"
-                                            class="mt-4 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
-                                        >
-                                            Add More Tasks
-                                        </button>
-                                    </div>`
-                                }
-                            </div>
-                        `}
-                    </div>
-                    
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-gray-800">Task Queue</h3>
-                            <span class="text-sm text-gray-500">${this.projectTasks.filter(t => !t.is_completed).length} pending</span>
-                        </div>
-                        <div class="space-y-2 max-h-64 overflow-y-auto" id="tasksList">
-                            ${this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).length > 0 ? 
-                                this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).map((task, index) => `
-                                    <div class="flex items-center p-3 rounded-lg bg-gray-50">
-                                        <span class="text-gray-400 text-sm mr-3">#${index + 2}</span>
-                                        <div class="flex-1">
-                                            <p class="text-gray-700">${this.escapeHtml(task.title)}</p>
+                    ${!this.superFocusMode ? `
+                        <div class="mb-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">Today's Task</h3>
+                            ${todayTask ? `
+                                <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1 pr-4">
+                                            <h4 class="text-2xl font-bold text-gray-800 mb-2">${this.escapeHtml(todayTask.title)}</h4>
+                                            ${todayTask.description ? 
+                                                `<p class="text-lg text-gray-600">${this.escapeHtml(todayTask.description)}</p>` : 
+                                                ''
+                                            }
                                         </div>
+                                        <button 
+                                            onclick="app.completeTask(${todayTask.id}, ${this.selectedProject.id})"
+                                            class="flex-shrink-0 w-16 h-16 border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 text-gray-300 hover:text-green-500 rounded-full transition-all transform hover:scale-110 flex items-center justify-center group"
+                                            title="Mark as complete"
+                                        >
+                                            <svg class="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            <div class="absolute w-16 h-16 border-2 border-gray-300 rounded-full group-hover:hidden"></div>
+                                        </button>
                                     </div>
-                                `).join('') :
-                                '<p class="text-gray-400 text-center py-4">No more tasks in queue</p>'
-                            }
+                                    ${completedToday > 0 ? 
+                                        `<div class="mt-4 text-sm text-green-600">
+                                            <p>🎯 You've already completed ${completedToday} task${completedToday > 1 ? 's' : ''} today!</p>
+                                        </div>` : 
+                                        ''
+                                    }
+                                </div>
+                            ` : `
+                                <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+                                    ${this.projectTasks.length === 0 ? 
+                                        `<div>
+                                            <p class="text-gray-500 text-lg mb-4">No tasks yet for this project.</p>
+                                            <button 
+                                                onclick="app.showAddTaskModal()"
+                                                class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                                            >
+                                                Add Your First Task
+                                            </button>
+                                        </div>` : 
+                                        `<div>
+                                            <p class="text-green-600 text-xl font-bold mb-2">🎉 All tasks completed!</p>
+                                            <p class="text-gray-600">Great job! Add more tasks to keep the momentum going.</p>
+                                            <button 
+                                                onclick="app.showAddTaskModal()"
+                                                class="mt-4 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                                            >
+                                                Add More Tasks
+                                            </button>
+                                        </div>`
+                                    }
+                                </div>
+                            `}
                         </div>
-                    </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold text-gray-800">Task Queue</h3>
+                                <span class="text-sm text-gray-500">${this.projectTasks.filter(t => !t.is_completed).length} pending</span>
+                            </div>
+                            <div class="space-y-2 max-h-64 overflow-y-auto" id="tasksList">
+                                ${this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).length > 0 ? 
+                                    this.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).map((task, index) => `
+                                        <div class="flex items-center p-3 rounded-lg bg-gray-50">
+                                            <span class="text-gray-400 text-sm mr-3">#${index + 2}</span>
+                                            <div class="flex-1">
+                                                <p class="text-gray-700">${this.escapeHtml(task.title)}</p>
+                                            </div>
+                                        </div>
+                                    `).join('') :
+                                    '<p class="text-gray-400 text-center py-4">No more tasks in queue</p>'
+                                }
+                            </div>
+                        </div>
+                    ` : `
+                        ${this.renderSuperFocusView(todayTask, completedToday)}
+                    `}
                 </div>
             </div>
             
             ${this.renderModals()}
+        `;
+    }
+    
+    renderSuperFocusView(todayTask, completedToday) {
+        if (!todayTask) {
+            return `
+                <div class="bg-white rounded-xl shadow-sm p-12 text-center">
+                    ${this.projectTasks.length === 0 ? 
+                        `<div>
+                            <div class="text-6xl mb-4">📝</div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">No tasks yet</h3>
+                            <p class="text-gray-600 mb-6">Exit Super Focus to add tasks to this project.</p>
+                            <button 
+                                onclick="app.toggleSuperFocus()"
+                                class="text-blue-600 hover:text-blue-800"
+                            >
+                                Exit Super Focus Mode
+                            </button>
+                        </div>` : 
+                        `<div>
+                            <div class="text-6xl mb-4">🎉</div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">All Done!</h3>
+                            <p class="text-gray-600 mb-6">You've completed all tasks in this project.</p>
+                            <button 
+                                onclick="app.toggleSuperFocus()"
+                                class="text-blue-600 hover:text-blue-800"
+                            >
+                                Exit Super Focus to add more tasks
+                            </button>
+                        </div>`
+                    }
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="bg-white rounded-xl shadow-sm p-8">
+                <div class="max-w-2xl mx-auto">
+                    <h3 class="text-center text-sm font-medium text-gray-500 mb-6">TODAY'S FOCUS</h3>
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-3">${this.escapeHtml(todayTask.title)}</h2>
+                        ${todayTask.description ? 
+                            `<p class="text-lg text-gray-600">${this.escapeHtml(todayTask.description)}</p>` : 
+                            ''
+                        }
+                    </div>
+                    <div class="flex justify-center">
+                        <button 
+                            onclick="app.completeTask(${todayTask.id}, ${this.selectedProject.id})"
+                            class="group flex items-center space-x-3 bg-green-500 text-white px-8 py-4 rounded-full hover:bg-green-600 transition-all transform hover:scale-105"
+                        >
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-xl font-medium">Mark Complete</span>
+                        </button>
+                    </div>
+                    ${completedToday > 0 ? 
+                        `<div class="mt-6 text-center text-sm text-green-600">
+                            <p>🎯 You've already completed ${completedToday} task${completedToday > 1 ? 's' : ''} today!</p>
+                        </div>` : 
+                        ''
+                    }
+                </div>
+            </div>
         `;
     }
     
@@ -483,6 +576,12 @@ class ProjectPlannerApp {
     }
     
     // Event handlers
+    toggleSuperFocus() {
+        this.superFocusMode = !this.superFocusMode;
+        localStorage.setItem('superFocusMode', this.superFocusMode);
+        this.render();
+    }
+    
     showAddProjectModal() {
         this.showAddProject = true;
         this.render();
