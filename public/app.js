@@ -163,11 +163,13 @@ class ProjectPlannerApp {
                                 
                                 const currentProject = activeProjects[this.currentProjectIndex];
                                 return `
-                                    <div class="col-span-full max-w-2xl mx-auto">
-                                        <div class="text-center mb-4 text-sm text-gray-500">
+                                    <div class="col-span-full">
+                                        <div class="text-center mb-6 text-lg text-gray-500">
                                             Project ${this.currentProjectIndex + 1} of ${activeProjects.length}
                                         </div>
-                                        ${this.renderProjectCard(currentProject)}
+                                        <div class="max-w-4xl mx-auto transform scale-110">
+                                            ${this.renderProjectCard(currentProject)}
+                                        </div>
                                     </div>
                                 `;
                             })() :
