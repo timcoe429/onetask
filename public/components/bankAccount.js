@@ -27,6 +27,11 @@ window.BankAccount = {
     
     // Render the bank account widget
     render: function(totalTasks, dailyRate, streakBonus = 0) {
+        // Don't render if no tasks yet
+        if (!totalTasks || totalTasks === 0) {
+            return '';
+        }
+        
         const projections = this.calculateProjections(totalTasks, dailyRate);
         
         // Visual progress bar calculations
