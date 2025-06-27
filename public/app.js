@@ -11,6 +11,7 @@ class ProjectPlannerApp {
         // UI state
         this.showAddProject = false;
         this.showAddTask = false;
+        this.showProductivityDashboard = false;
         this.newProject = { name: '', description: '', color: '#3B82F6', icon: '📁' };
         this.newTask = { title: '', description: '', priority: 0 };
         this.bulkTasks = '';
@@ -72,6 +73,11 @@ class ProjectPlannerApp {
         return `
             ${this.showAddProject ? Modals.renderAddProject(this.newProject) : ''}
             ${this.showAddTask ? Modals.renderAddTask(this.selectedProject, this.bulkTasks) : ''}
+            ${this.showProductivityDashboard ? BankAccount.renderModal(
+                this.globalStats.total_points || 0,
+                1.2, // Default daily rate
+                0    // Default streak bonus
+            ) : ''}
         `;
     }
     
@@ -87,6 +93,11 @@ class ProjectPlannerApp {
             StateManager.setCurrentProjectIndex(0);
         }
         
+        this.render();
+    }
+    
+    toggleProductivityDashboard() {
+        this.showProductivityDashboard = !this.showProductivityDashboard;
         this.render();
     }
     
