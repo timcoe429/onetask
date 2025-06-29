@@ -195,6 +195,47 @@ class ProjectPlannerApp {
         }
     }
     
+    async deleteProject(projectId) {
+        if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const success = await API.deleteProject(projectId);
+            
+            if (success) {
+                await this.loadData();
+                // If we're viewing the deleted project, go back to dashboard
+                if (this.selectedProject && this.selectedProject.id === projectId) {
+                    this.backToDashboard();
+                } else {
+                    this.render();
+                }
+                Notifications.show('Project deleted successfully', 'success');
+            }
+        } catch (err) {
+            console.error('Failed to delete project:', err);
+            Notifications.show('Failed to delete project', 'error');
+        }
+    }
+    
+    async reorderTasks(taskIds) {
+        if (!this.selectedProject) return;
+        
+        try {
+            const success = await API.reorderTasks(this.selectedProject.id, taskIds);
+            
+            if (success) {
+                await this.loadProjectTasks();
+                this.render();
+                Notifications.show('Tasks reordered successfully', 'success');
+            }
+        } catch (err) {
+            console.error('Failed to reorder tasks:', err);
+            Notifications.show('Failed to reorder tasks', 'error');
+        }
+    }
+    
     async selectProject(projectId) {
         this.selectedProject = this.projects.find(p => p.id === projectId);
         if (this.selectedProject) {
@@ -341,6 +382,79 @@ class ProjectPlannerApp {
         return 0;
     }
 }
+
+// Drag and drop functionality for task reordering
+let draggedElement = null;
+
+window.handleDragStart = function(e) {
+    draggedElement = e.target.closest('.task-item');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', draggedElement.outerHTML);
+    draggedElement.classList.add('opacity-50');
+};
+
+window.handleDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const taskItem = e.target.closest('.task-item');
+    if (taskItem && taskItem !== draggedElement) {
+        const rect = taskItem.getBoundingClientRect();
+        const middle = rect.top + rect.height / 2;
+        
+        // Remove previous indicators
+        document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+        
+        // Add drop indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'drop-indicator h-1 bg-blue-500 rounded mx-4 my-1';
+        
+        if (e.clientY < middle) {
+            taskItem.parentNode.insertBefore(indicator, taskItem);
+        } else {
+            taskItem.parentNode.insertBefore(indicator, taskItem.nextSibling);
+        }
+    }
+};
+
+window.handleDrop = function(e) {
+    e.preventDefault();
+    
+    const taskItem = e.target.closest('.task-item');
+    if (taskItem && taskItem !== draggedElement) {
+        const rect = taskItem.getBoundingClientRect();
+        const middle = rect.top + rect.height / 2;
+        
+        if (e.clientY < middle) {
+            taskItem.parentNode.insertBefore(draggedElement, taskItem);
+        } else {
+            taskItem.parentNode.insertBefore(draggedElement, taskItem.nextSibling);
+        }
+        
+        // Get new order of task IDs
+        const tasksList = document.getElementById('tasksList');
+        const taskItems = tasksList.querySelectorAll('.task-item');
+        const taskIds = Array.from(taskItems).map(item => parseInt(item.dataset.taskId));
+        
+        // Send reorder request
+        if (window.app) {
+            window.app.reorderTasks(taskIds);
+        }
+    }
+    
+    // Clean up
+    document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+};
+
+window.handleDragEnd = function(e) {
+    if (draggedElement) {
+        draggedElement.classList.remove('opacity-50');
+        draggedElement = null;
+    }
+    
+    // Clean up any remaining indicators
+    document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+};
 
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {

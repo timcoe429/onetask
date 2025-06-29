@@ -262,9 +262,9 @@ app.get('/api/projects', requireAuth, async (req, res) => {
       LEFT JOIN LATERAL (
         SELECT * FROM tasks 
         WHERE project_id = p.id 
-          AND (assigned_date = $1 OR (assigned_date IS NULL AND is_completed = false))
+          AND is_completed = false
           AND is_bonus = false
-        ORDER BY assigned_date DESC NULLS LAST, priority DESC, id ASC
+        ORDER BY priority DESC, created_at ASC
         LIMIT 1
       ) t ON true
       WHERE p.is_active = true
@@ -298,6 +298,53 @@ app.post('/api/projects', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Create project error:', err);
     res.status(500).json({ error: 'Failed to create project' });
+  }
+});
+
+// Delete project
+app.delete('/api/projects/:projectId', requireAuth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Mark project as inactive instead of deleting to preserve data integrity
+    await pool.query(
+      'UPDATE projects SET is_active = false WHERE id = $1',
+      [projectId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete project error:', err);
+    res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+
+// Update task order
+app.put('/api/projects/:projectId/tasks/reorder', requireAuth, async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const { projectId } = req.params;
+    const { taskIds } = req.body; // Array of task IDs in new order
+    
+    // Update each task with its new order index
+    for (let i = 0; i < taskIds.length; i++) {
+      await client.query(
+        'UPDATE tasks SET priority = $1 WHERE id = $2 AND project_id = $3',
+        [taskIds.length - i, taskIds[i], projectId] // Higher number = higher priority
+      );
+    }
+    
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Reorder tasks error:', err);
+    res.status(500).json({ error: 'Failed to reorder tasks' });
+  } finally {
+    client.release();
   }
 });
 
@@ -400,18 +447,22 @@ app.post('/api/tasks/:taskId/complete', requireAuth, async (req, res) => {
       const streak = streakResult.rows[0];
       const lastCompleted = streak.last_completed_date;
       
-      // Calculate streak
+      // Calculate streak with new +1/-1 system
       if (lastCompleted) {
         const lastDate = new Date(lastCompleted);
         const todayDate = new Date(today);
         const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
         
         if (daysDiff === 1) {
+          // Consecutive day: +1
           currentStreak = streak.current_streak + 1;
         } else if (daysDiff === 0) {
-          currentStreak = streak.current_streak; // Same day, keep streak
+          // Same day: keep streak
+          currentStreak = streak.current_streak;
         } else {
-          currentStreak = 1; // Streak broken
+          // Missed days: -1 for each day missed, then +1 for completing today
+          const missedDays = daysDiff - 1;
+          currentStreak = streak.current_streak - missedDays + 1;
         }
       } else {
         currentStreak = 1; // First task
@@ -574,9 +625,76 @@ app.get('/', (req, res) => {
   }
 });
 
+// Daily streak decay function
+async function processStreakDecay() {
+  const client = await pool.connect();
+  
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get all projects with their last activity
+    const projects = await client.query(`
+      SELECT ps.*, p.name 
+      FROM project_streaks ps
+      JOIN projects p ON ps.project_id = p.id
+      WHERE p.is_active = true
+    `);
+    
+    for (const project of projects.rows) {
+      if (project.last_completed_date) {
+        const lastDate = new Date(project.last_completed_date);
+        const todayDate = new Date(today);
+        const daysSinceLastActivity = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+        
+        // If more than 1 day since last activity, decay the streak
+        if (daysSinceLastActivity > 1) {
+          const decayAmount = daysSinceLastActivity - 1;
+          const newStreak = project.current_streak - decayAmount;
+          
+          if (newStreak !== project.current_streak) {
+            await client.query(
+              'UPDATE project_streaks SET current_streak = $1 WHERE project_id = $2',
+              [newStreak, project.project_id]
+            );
+            
+            console.log(`Decayed streak for project ${project.name}: ${project.current_streak} -> ${newStreak} (${decayAmount} days missed)`);
+          }
+        }
+      }
+    }
+    
+    console.log('Daily streak decay processed');
+  } catch (err) {
+    console.error('Error processing streak decay:', err);
+  } finally {
+    client.release();
+  }
+}
+
+// Run streak decay daily at midnight
+function scheduleStreakDecay() {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  
+  const msUntilMidnight = midnight.getTime() - now.getTime();
+  
+  setTimeout(() => {
+    processStreakDecay();
+    // Then schedule to run every 24 hours
+    setInterval(processStreakDecay, 24 * 60 * 60 * 1000);
+  }, msUntilMidnight);
+}
+
 // Initialize database and start server
 initDB().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Project Planner server running on port ${PORT}`);
+    
+    // Schedule daily streak decay
+    scheduleStreakDecay();
+    
+    // Run once on startup to catch up on any missed days
+    processStreakDecay();
   });
 });

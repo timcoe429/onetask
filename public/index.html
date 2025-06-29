@@ -73,6 +73,78 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+        
+        /* Enhanced streak effects */
+        .streak-fire {
+            animation: fireGlow 2s ease-in-out infinite alternate;
+        }
+        
+        .streak-ice {
+            animation: iceGlow 3s ease-in-out infinite alternate;
+        }
+        
+        .streak-legendary {
+            animation: legendaryGlow 1.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes fireGlow {
+            from { 
+                box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+            }
+            to { 
+                box-shadow: 0 0 30px rgba(255, 107, 53, 0.8), 0 0 40px rgba(247, 147, 30, 0.6);
+            }
+        }
+        
+        @keyframes iceGlow {
+            from { 
+                box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            }
+            to { 
+                box-shadow: 0 0 25px rgba(59, 130, 246, 0.7), 0 0 35px rgba(147, 197, 253, 0.5);
+            }
+        }
+        
+        @keyframes legendaryGlow {
+            from { 
+                box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+            }
+            to { 
+                box-shadow: 0 0 40px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 237, 78, 0.7);
+            }
+        }
+        
+        /* Drag and drop styles */
+        .task-item {
+            transition: all 0.2s ease;
+        }
+        
+        .task-item:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .task-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .drop-indicator {
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Delete button hover effect */
+        .delete-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .delete-btn:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>

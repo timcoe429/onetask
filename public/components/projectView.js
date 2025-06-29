@@ -138,7 +138,16 @@ window.ProjectView = {
                 <div class="space-y-2 max-h-64 overflow-y-auto" id="tasksList">
                     ${app.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).length > 0 ? 
                         app.projectTasks.filter(t => !t.is_completed && t.id !== todayTask?.id).map((task, index) => `
-                            <div class="flex items-center p-3 rounded-lg bg-gray-50">
+                            <div class="flex items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-move task-item" 
+                                 data-task-id="${task.id}"
+                                 draggable="true"
+                                 ondragstart="handleDragStart(event)"
+                                 ondragover="handleDragOver(event)"
+                                 ondrop="handleDrop(event)"
+                                 ondragend="handleDragEnd(event)">
+                                <svg class="w-4 h-4 text-gray-400 mr-2 cursor-move" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                                </svg>
                                 <span class="text-gray-400 text-sm mr-3">#${index + 2}</span>
                                 <div class="flex-1">
                                     <p class="text-gray-700">${Utils.escapeHtml(task.title)}</p>

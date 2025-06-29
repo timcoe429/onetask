@@ -134,20 +134,66 @@ window.Dashboard = {
         const hasTask = task && task.id;
         const isCompleted = hasTask && task.is_completed;
         
+        // Calculate visual effects based on streak
+        const isNegative = streak < 0;
+        const absStreak = Math.abs(streak);
+        const isHighStreak = streak >= 15;
+        
+        // Calculate border and glow effects
+        let cardClasses = "bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-lg transition-all cursor-pointer card-hover";
+        let streakClasses = "";
+        
+        if (isNegative) {
+            // Blue border that gets more intense with negative streak
+            cardClasses += " border-blue-400 streak-ice";
+        } else if (streak > 0) {
+            // Fire glow effect for positive streaks
+            if (isHighStreak) {
+                cardClasses += " border-orange-400 streak-legendary";
+                cardClasses = cardClasses.replace("bg-white", "bg-gradient-to-br from-orange-50 to-orange-100");
+            } else if (streak >= 7) {
+                cardClasses += " border-orange-300 streak-fire";
+            } else if (streak >= 3) {
+                cardClasses += " border-red-300 streak-fire";
+            }
+        } else {
+            cardClasses += " border-gray-200";
+        }
+        
         return `
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer card-hover"
+            <div class="${cardClasses}"
                  onclick="app.selectProject(${project.id})">
-                <div class="p-6">
+                <div class="p-6 relative">
+                    ${app.focusMode === 0 ? `
+                        <button 
+                            onclick="event.stopPropagation(); app.deleteProject(${project.id})"
+                            class="absolute top-2 right-2 text-gray-400 hover:text-red-500 delete-btn"
+                            title="Delete project"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    ` : ''}
+                    
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center space-x-3">
                             <span class="text-3xl">${project.icon}</span>
                             <h3 class="text-lg font-bold text-gray-800">${Utils.escapeHtml(project.name)}</h3>
                         </div>
                         <div class="flex items-center space-x-2">
-                            ${streak > 0 ? `
-                                <div class="flex items-center space-x-1 bg-orange-100 text-orange-600 px-2 py-1 rounded-full">
-                                    <span class="text-sm">🔥</span>
-                                    <span class="text-xs font-bold">${streak}</span>
+                            ${streak !== 0 ? `
+                                <div class="flex items-center space-x-1 px-2 py-1 rounded-full ${
+                                    isNegative 
+                                        ? 'bg-blue-100 text-blue-600' 
+                                        : isHighStreak 
+                                        ? 'bg-gradient-to-r from-orange-200 to-red-200 text-orange-700 shadow-lg animate-pulse' 
+                                        : streak >= 7 
+                                        ? 'bg-orange-100 text-orange-600 shadow-md' 
+                                        : 'bg-red-100 text-red-600'
+                                }">
+                                    <span class="text-sm">${isNegative ? '🧊' : streak >= 15 ? '🚀' : streak >= 7 ? '⚡' : '🔥'}</span>
+                                    <span class="text-xs font-bold">${isNegative ? absStreak : streak}</span>
                                 </div>
                             ` : ''}
                         </div>

@@ -76,5 +76,24 @@ window.API = {
             return await response.json();
         }
         return null;
+    },
+    
+    // Delete project
+    deleteProject: async function(projectId) {
+        const response = await fetch(`/api/projects/${projectId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.ok;
+    },
+    
+    // Reorder tasks
+    reorderTasks: async function(projectId, taskIds) {
+        const response = await fetch(`/api/projects/${projectId}/tasks/reorder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taskIds })
+        });
+        return response.ok;
     }
 };
