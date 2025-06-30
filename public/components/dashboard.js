@@ -193,7 +193,7 @@ window.Dashboard = {
                                         : 'bg-red-100 text-red-600'
                                 }">
                                     <span class="text-sm">${isNegative ? '🧊' : streak >= 15 ? '🚀' : streak >= 7 ? '⚡' : '🔥'}</span>
-                                    <span class="text-xs font-bold">${isNegative ? absStreak : streak}</span>
+                                    <span class="text-xs font-bold">${streak}</span>
                                 </div>
                             ` : ''}
                         </div>
