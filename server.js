@@ -272,7 +272,7 @@ app.get('/api/projects', requireAuth, async (req, res) => {
       ) t ON true
       WHERE p.is_active = true
       ORDER BY p.created_at DESC
-    `, [today]);
+    `);
     
     res.json(result.rows);
   } catch (err) {
