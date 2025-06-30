@@ -628,7 +628,9 @@ app.get('/', (req, res) => {
   }
 });
 
-// Daily streak decay function
+// Daily streak decay function - DISABLED
+// This function is redundant because the task completion logic already handles
+// both +1 for completing today and -1 for each missed day in a single calculation
 async function processStreakDecay() {
   const client = await pool.connect();
   
@@ -694,10 +696,8 @@ initDB().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Project Planner server running on port ${PORT}`);
     
-    // Schedule daily streak decay
-    scheduleStreakDecay();
-    
-    // Run once on startup to catch up on any missed days
-    processStreakDecay();
+    // DISABLED: Daily decay process - redundant since task completion handles streak changes
+    // scheduleStreakDecay();
+    // processStreakDecay();
   });
 });
