@@ -49,22 +49,18 @@ const requireAuth = (req, res, next) => {
 // Initialize database with new schema
 async function initDB() {
   try {
-    // Drop old tables
+    // Only drop old unused tables (never drop project-related tables)
     await pool.query(`
       DROP TABLE IF EXISTS message_reactions CASCADE;
       DROP TABLE IF EXISTS chat_messages CASCADE;
       DROP TABLE IF EXISTS challenge_participants CASCADE;
-      DROP TABLE IF EXISTS daily_progress CASCADE;
       DROP TABLE IF EXISTS daily_progress_v2 CASCADE;
       DROP TABLE IF EXISTS daily_progress_summary CASCADE;
       DROP TABLE IF EXISTS challenges CASCADE;
       DROP TABLE IF EXISTS user_badges CASCADE;
-      DROP TABLE IF EXISTS badges CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
     `);
 
-    // Create new tables for project planner
-    
     // Projects table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
@@ -190,6 +186,13 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(project_id, priority DESC, is_completed);
       CREATE INDEX IF NOT EXISTS idx_daily_progress_date ON daily_progress(completed_date DESC);
       CREATE INDEX IF NOT EXISTS idx_project_streaks_project ON project_streaks(project_id);
+    `);
+
+    // Ensure all existing projects have streak records
+    await pool.query(`
+      INSERT INTO project_streaks (project_id, current_streak, longest_streak, total_points)
+      SELECT id, 0, 0, 0 FROM projects 
+      WHERE id NOT IN (SELECT project_id FROM project_streaks WHERE project_id IS NOT NULL)
     `);
 
     console.log('Database initialized successfully');
