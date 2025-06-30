@@ -450,21 +450,22 @@ app.post('/api/tasks/:taskId/complete', requireAuth, async (req, res) => {
       const streak = streakResult.rows[0];
       const lastCompleted = streak.last_completed_date;
       
-      // Simple +1/-1 system: completing a task = +1 (max once per day)
+      // Simple +1 system: First task of the day = +1, additional tasks = no change
       if (lastCompleted) {
-        const lastDate = new Date(lastCompleted);
-        const todayDate = new Date(today);
-        const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+        // Check if we already completed a task today
+        const lastCompletedDate = lastCompleted.toISOString ? lastCompleted.toISOString().split('T')[0] : lastCompleted;
+        const alreadyCompletedToday = (lastCompletedDate === today);
         
-        if (daysDiff === 0) {
-          // Same day: keep streak (max +1 per day)
+        if (alreadyCompletedToday) {
+          // Already got our +1 today, keep current streak
           currentStreak = streak.current_streak;
         } else {
-          // Different day: +1 for completing today
+          // First task today: +1
           currentStreak = streak.current_streak + 1;
         }
       } else {
-        currentStreak = 1; // First task ever
+        // First task ever for this project
+        currentStreak = 1;
       }
       
       longestStreak = Math.max(currentStreak, streak.longest_streak);
@@ -695,7 +696,7 @@ initDB().then(() => {
     // Schedule daily streak decay (simple -1 for projects with no activity)
     scheduleStreakDecay();
     
-    // Run once on startup to catch up on any missed days
-    processStreakDecay();
+    // DON'T run on startup - only at scheduled EOD time
+    // processStreakDecay();
   });
 });
