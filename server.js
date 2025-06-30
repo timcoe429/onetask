@@ -450,25 +450,21 @@ app.post('/api/tasks/:taskId/complete', requireAuth, async (req, res) => {
       const streak = streakResult.rows[0];
       const lastCompleted = streak.last_completed_date;
       
-      // Calculate streak with new +1/-1 system
+      // Simple +1/-1 system: completing a task = +1 (max once per day)
       if (lastCompleted) {
         const lastDate = new Date(lastCompleted);
         const todayDate = new Date(today);
         const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
         
-        if (daysDiff === 1) {
-          // Consecutive day: +1
-          currentStreak = streak.current_streak + 1;
-        } else if (daysDiff === 0) {
-          // Same day: keep streak
+        if (daysDiff === 0) {
+          // Same day: keep streak (max +1 per day)
           currentStreak = streak.current_streak;
         } else {
-          // Missed days: -1 for each day missed, then +1 for completing today
-          const missedDays = daysDiff - 1;
-          currentStreak = streak.current_streak - missedDays + 1;
+          // Different day: +1 for completing today
+          currentStreak = streak.current_streak + 1;
         }
       } else {
-        currentStreak = 1; // First task
+        currentStreak = 1; // First task ever
       }
       
       longestStreak = Math.max(currentStreak, streak.longest_streak);
@@ -628,16 +624,16 @@ app.get('/', (req, res) => {
   }
 });
 
-// Daily streak decay function - DISABLED
-// This function is redundant because the task completion logic already handles
-// both +1 for completing today and -1 for each missed day in a single calculation
+// Daily streak decay function - simple -1 for projects with no activity
 async function processStreakDecay() {
   const client = await pool.connect();
   
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
     
-    // Get all projects with their last activity
+    // Get all active projects
     const projects = await client.query(`
       SELECT ps.*, p.name 
       FROM project_streaks ps
@@ -646,25 +642,25 @@ async function processStreakDecay() {
     `);
     
     for (const project of projects.rows) {
-      if (project.last_completed_date) {
-        const lastDate = new Date(project.last_completed_date);
-        const todayDate = new Date(today);
-        const daysSinceLastActivity = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+      // Check if project had any completed tasks yesterday
+      const activityCheck = await client.query(`
+        SELECT COUNT(*) as count
+        FROM daily_progress 
+        WHERE project_id = $1 AND completed_date = $2
+      `, [project.project_id, yesterdayStr]);
+      
+      const hadActivity = parseInt(activityCheck.rows[0].count) > 0;
+      
+      // If no activity yesterday, apply -1 penalty
+      if (!hadActivity) {
+        const newStreak = project.current_streak - 1;
         
-        // If more than 1 day since last activity, decay the streak
-        if (daysSinceLastActivity > 1) {
-          const decayAmount = daysSinceLastActivity - 1;
-          const newStreak = project.current_streak - decayAmount;
-          
-          if (newStreak !== project.current_streak) {
-            await client.query(
-              'UPDATE project_streaks SET current_streak = $1 WHERE project_id = $2',
-              [newStreak, project.project_id]
-            );
-            
-            console.log(`Decayed streak for project ${project.name}: ${project.current_streak} -> ${newStreak} (${decayAmount} days missed)`);
-          }
-        }
+        await client.query(
+          'UPDATE project_streaks SET current_streak = $1 WHERE project_id = $2',
+          [newStreak, project.project_id]
+        );
+        
+        console.log(`Daily penalty for ${project.name}: ${project.current_streak} -> ${newStreak} (no activity yesterday)`);
       }
     }
     
@@ -696,8 +692,10 @@ initDB().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Project Planner server running on port ${PORT}`);
     
-    // DISABLED: Daily decay process - redundant since task completion handles streak changes
-    // scheduleStreakDecay();
-    // processStreakDecay();
+    // Schedule daily streak decay (simple -1 for projects with no activity)
+    scheduleStreakDecay();
+    
+    // Run once on startup to catch up on any missed days
+    processStreakDecay();
   });
 });
