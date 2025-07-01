@@ -95,5 +95,23 @@ window.API = {
             body: JSON.stringify({ taskIds })
         });
         return response.ok;
+    },
+    
+    // Delete a task
+    deleteTask: async function(taskId) {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.ok;
+    },
+    
+    // Promote task to current focus
+    promoteTask: async function(taskId) {
+        const response = await fetch(`/api/tasks/${taskId}/promote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return response.ok;
     }
 };

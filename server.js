@@ -536,6 +536,54 @@ app.get('/api/projects/:projectId/next-task', requireAuth, async (req, res) => {
   }
 });
 
+// Delete a task
+app.delete('/api/tasks/:taskId', requireAuth, async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    
+    await pool.query('DELETE FROM tasks WHERE id = $1', [taskId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete task error:', err);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+// Promote task to current focus (highest priority)
+app.post('/api/tasks/:taskId/promote', requireAuth, async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    
+    // Get the task details first
+    const taskResult = await pool.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    const task = taskResult.rows[0];
+    
+    // Get the current highest priority for this project
+    const maxPriorityResult = await pool.query(
+      'SELECT MAX(priority) as max_priority FROM tasks WHERE project_id = $1',
+      [task.project_id]
+    );
+    
+    const maxPriority = maxPriorityResult.rows[0].max_priority || 0;
+    const newPriority = maxPriority + 1;
+    
+    // Update the task priority to be highest
+    await pool.query(
+      'UPDATE tasks SET priority = $1 WHERE id = $2',
+      [newPriority, taskId]
+    );
+    
+    res.json({ success: true, newPriority });
+  } catch (err) {
+    console.error('Promote task error:', err);
+    res.status(500).json({ error: 'Failed to promote task' });
+  }
+});
+
 // === STATS ENDPOINTS ===
 
 // Get global stats

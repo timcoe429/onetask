@@ -236,6 +236,38 @@ class ProjectPlannerApp {
         }
     }
     
+    async deleteTask(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) return;
+        
+        try {
+            const success = await API.deleteTask(taskId);
+            
+            if (success) {
+                await this.loadProjectTasks();
+                this.render();
+                Notifications.show('Task deleted successfully', 'success');
+            }
+        } catch (err) {
+            console.error('Failed to delete task:', err);
+            Notifications.show('Failed to delete task', 'error');
+        }
+    }
+    
+    async promoteTask(taskId) {
+        try {
+            const success = await API.promoteTask(taskId);
+            
+            if (success) {
+                await this.loadProjectTasks();
+                this.render();
+                Notifications.show('Task promoted to current focus!', 'success');
+            }
+        } catch (err) {
+            console.error('Failed to promote task:', err);
+            Notifications.show('Failed to promote task', 'error');
+        }
+    }
+    
     async selectProject(projectId) {
         this.selectedProject = this.projects.find(p => p.id === projectId);
         if (this.selectedProject) {
